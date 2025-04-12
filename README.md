@@ -1,59 +1,89 @@
-# rt_crisis_monitoring_backend
-Project Name: CrisisCopilot
+# CrisisCopilot Backend
 
-Description:
-CrisisCopilot is a real-time, LLM-powered emergency event monitoring system that scrapes tweets and news headlines from the internet to detect and structure information about critical situations that may require humanitarian aid or first responder intervention. This includes natural disasters (earthquakes, floods), fires, violence, disease outbreaks, infrastructure collapse, protests, accidents, and more.
+Real-time crisis monitoring system that processes and structures emergency event information.
 
-The backend uses Gemini API to:
+## Description
+CrisisCopilot is a real-time, LLM-powered emergency event monitoring system that processes tweets and news headlines to detect critical situations requiring humanitarian aid or first responder intervention.
 
-Classify whether a piece of text (tweet or headline) is related to an emergency event.
+## Quick Start
 
-Determine event type, urgency, and affected location using natural language understanding.
+### Prerequisites
+- Python 3.8 or higher
+- MongoDB Atlas account
+- Git
 
-Cluster texts that describe the same event based on type, location, and timestamp.
+### Installation
 
-Summarize and structure the grouped event into a consistent format containing:
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/rt_crisis_monitoring_backend.git
+cd rt_crisis_monitoring_backend
+```
 
-Event type
+2. Create and activate virtual environment
+```bash
+python -m venv venv
+.\venv\Scripts\activate
+```
 
-Location
+3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-Casualty/displacement estimates
+4. Set up environment variables
+Create a `.env` file in the root directory with:
+```
+MONGODB_URL="your_mongodb_connection_string"
+MONGODB_DB_NAME="crisis_copilot"
+```
 
-Urgency level
+### Running the Application
 
-Humanitarian needs
+1. Start the FastAPI server
+```bash
+uvicorn src.main:app --reload
+```
 
-Recommended response actions
+2. Access the API documentation at:
+- http://localhost:8000/docs
+- http://localhost:8000/redoc
 
-The structured information is stored in MongoDB Atlas. Each event record includes the original source texts, structured response data, and metadata for future filtering or retrieval.
+## API Endpoints
 
-The system also integrates FAISS (or Chroma) to allow for semantic vector search of similar past events, aiding NGOs and response teams with reference scenarios.
+- `GET /`: Health check endpoint
+- `GET /api/v1/events`: List crisis events
+- (More endpoints coming soon)
 
-The frontend is built with Streamlit, showing:
+## Project Structure
+```
+rt_crisis_monitoring_backend/
+├── config/
+│   └── settings.py         # Application configuration
+├── src/
+│   ├── core/
+│   │   └── database.py     # Database connection
+│   └── main.py            # FastAPI application
+├── .env                    # Environment variables
+└── README.md              # This file
+```
 
-A live feed of detected critical events
+## Technologies Used
 
-Their structured summaries
+- **FastAPI**: Web framework for building APIs
+- **MongoDB Atlas**: Cloud database
+- **Motor**: Async MongoDB driver
+- **Pydantic**: Data validation
+- **Uvicorn**: ASGI server
 
-Recommended response actions
+## Contributing
 
-Search and filtering by location, event type, or urgency
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
 
-The entire application is deployed and protected through Cloudflare, providing SSL, domain management, and DDoS protection.
+## License
 
-Key Technologies:
-
-Gemini API (Google) for LLM classification and structuring
-
-LangChain for chaining LLM calls
-
-MongoDB Atlas for event data storage
-
-FAISS/Chroma for vector search
-
-Streamlit for frontend dashboard
-
-Tweepy / News API for data scraping
-
-Cloudflare for deployment and domain security
+This project is licensed under the MIT License - see the LICENSE file for details.
