@@ -8,7 +8,11 @@ from models.crisis_event import CrisisEvent
 from typing import List
 from src.core.database import db
 
-app = FastAPI()
+app = FastAPI(
+    title="CrisisCopilot API",
+    description="Real-time crisis monitoring system that processes and structures emergency event information",
+    version="1.0.0"
+)
 collection_service = CollectionService()
 
 # Configure CORS
@@ -19,6 +23,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def read_root():
+    """Root endpoint that returns basic API information and health status"""
+    return {
+        "name": "CrisisCopilot API",
+        "status": "healthy",
+        "version": "1.0.0",
+        "endpoints": {
+            "events": "/events",
+            "status": "/status",
+            "docs": "/docs",
+            "redoc": "/redoc"
+        }
+    }
 
 @app.on_event("startup")
 async def startup_event():
