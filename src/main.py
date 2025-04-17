@@ -1,40 +1,44 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from config.settings import get_settings
-from src.core.database import db
+import uvicorn
+import asyncio
 import logging
+from services.collection_service import CollectionService
+from models.crisis_event import CrisisEvent
+from typing import List
 
-settings = get_settings()
-
-app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
-)
+app = FastAPI()
+collection_service = CollectionService()
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.on_event("startup")
-async def startup_db_client():
-    try:
-        await db.connect_db()
-        # Test the connection
-        await db.db.command('ping')
-        logging.info("Successfully connected to MongoDB")
-    except Exception as e:
-        logging.error(f"Failed to connect to MongoDB: {str(e)}")
-        raise HTTPException(status_code=500, detail="Database connection failed")
+async def startup_event():
+    await collection_service.start_collection()
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
-    await db.close_db()
+def shutdown_event():
+    collection_service.stop_collection()
 
-@app.get("/")
-async def root():
-    return {"message": "Crisis Monitoring Backend API"}
+@app.get("/events", response_model=List[CrisisEvent])
+async def get_events():
+    try:
+        events = await collection_service.collect_events()
+        return events
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/status")
+def get_status():
+    return collection_service.get_collection_status()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
