@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str
     MONGODB_EVENTS_COLLECTION: str = "events"
     
+    # Twitter API Settings
+    TWITTER_API_KEY: str
+    TWITTER_API_SECRET: str
+    TWITTER_ACCESS_TOKEN: str
+    TWITTER_ACCESS_TOKEN_SECRET: str
+    
+    # News API Settings
+    NEWS_API_KEY: str
+    
     class Config:
         env_file = str(ENV_FILE)
         case_sensitive = True

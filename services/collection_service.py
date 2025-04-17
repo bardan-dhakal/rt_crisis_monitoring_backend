@@ -13,12 +13,18 @@ class CollectionService:
     async def start_collection(self):
         """Start the collection service"""
         if not self._running:
+            # Initialize collectors first
+            await self.collector_manager.initialize_collectors()
+            # Start the collection loop
+            asyncio.create_task(self.collector_manager.start_collection_loop())
             self._running = True
             logging.info("Collection service started")
 
-    def stop_collection(self):
-        """Stop the collection service"""
+    async def stop_collection(self):
+        """Stop the collection service and cleanup resources"""
         if self._running:
+            self.collector_manager.stop_collection()
+            await self.collector_manager.cleanup()
             self._running = False
             logging.info("Collection service stopped")
 
@@ -38,5 +44,5 @@ class CollectionService:
         """Get the current status of the collection service"""
         return {
             "running": self._running,
-            "collectors": self.collector_manager.get_collector_status()
+            "collectors": self.collector_manager.get_status()
         }

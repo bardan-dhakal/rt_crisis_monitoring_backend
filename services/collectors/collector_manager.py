@@ -75,6 +75,17 @@ class CollectorManager:
                 logger.error(f"Error in collection loop: {e}")
                 await asyncio.sleep(60)  # Wait a minute before retrying
     
+    async def cleanup(self):
+        """Cleanup all collectors"""
+        logger.info("Cleaning up collectors")
+        for collector in self.collectors:
+            if hasattr(collector, 'cleanup'):
+                try:
+                    await collector.cleanup()
+                except Exception as e:
+                    logger.error(f"Error cleaning up collector {collector.__class__.__name__}: {e}")
+        self.is_running = False
+
     def stop_collection(self):
         """Stop the collection loop"""
         logger.info("Stopping collection loop")

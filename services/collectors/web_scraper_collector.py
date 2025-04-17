@@ -43,6 +43,15 @@ class WebScraperCollector(BaseDataCollector):
         super().__init__()
         self.session = None
 
+    async def __aenter__(self):
+        await self._init_session()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
+            self.session = None
+
     async def validate_credentials(self) -> bool:
         """No credentials needed for web scraping"""
         return True
@@ -50,7 +59,12 @@ class WebScraperCollector(BaseDataCollector):
     async def _init_session(self):
         """Initialize aiohttp session if not already done"""
         if not self.session:
-            self.session = aiohttp.ClientSession()
+            try:
+                self.session = aiohttp.ClientSession()
+                logger.info("Initialized aiohttp session")
+            except Exception as e:
+                logger.error(f"Failed to initialize aiohttp session: {e}")
+                raise
 
     async def _fetch_page(self, url: str) -> str:
         """Fetch a page and return its HTML content"""
@@ -123,9 +137,17 @@ class WebScraperCollector(BaseDataCollector):
 
         return crisis_events
 
+    async def cleanup(self):
+        """Cleanup resources"""
+        if self.session:
+            await self.session.close()
+            self.session = None
+            logger.info("Closed aiohttp session")
+
     async def collect(self) -> List[CrisisEvent]:
         """Collect crisis-related news from all configured sources"""
-        await self._init_session()
+        if not self.session:
+            await self._init_session()
         try:
             tasks = [self._scrape_source(source) for source in self.NEWS_SOURCES]
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -143,7 +165,3 @@ class WebScraperCollector(BaseDataCollector):
         except Exception as e:
             logger.error(f"Error in web scraping collection: {e}")
             return []
-        finally:
-            if self.session:
-                await self.session.close()
-                self.session = None

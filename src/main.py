@@ -6,6 +6,7 @@ import logging
 from services.collection_service import CollectionService
 from models.crisis_event import CrisisEvent
 from typing import List
+from src.core.database import db
 
 app = FastAPI()
 collection_service = CollectionService()
@@ -21,11 +22,19 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
+    # Initialize database connection
+    await db.connect_db()
+    logging.info("Database connection initialized")
+    
+    # Start collection service
     await collection_service.start_collection()
+    logging.info("Collection service started")
 
 @app.on_event("shutdown")
-def shutdown_event():
+async def shutdown_event():
     collection_service.stop_collection()
+    await db.close_db()
+    logging.info("Application shutdown complete")
 
 @app.get("/events", response_model=List[CrisisEvent])
 async def get_events():
@@ -33,6 +42,7 @@ async def get_events():
         events = await collection_service.collect_events()
         return events
     except Exception as e:
+        logging.error(f"Error getting events: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/status")
