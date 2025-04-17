@@ -30,9 +30,11 @@ class CollectorManager:
     
     async def initialize_collectors(self) -> bool:
         """Initialize all collectors and validate their credentials"""
+        logger.info("Initializing collectors")
         all_valid = True
         for collector in self.collectors:
             try:
+                logger.info(f"Validating credentials for {collector.__class__.__name__}")
                 is_valid = await collector.validate_credentials()
                 if not is_valid:
                     logger.error(f"Failed to validate credentials for {collector.__class__.__name__}")
@@ -44,17 +46,26 @@ class CollectorManager:
     
     async def collect_all(self) -> List[CrisisEvent]:
         """Collect data from all collectors"""
+        logger.info("Starting collection cycle from all collectors")
         all_events = []
         for collector in self.collectors:
             try:
+                logger.info(f"Collecting from {collector.__class__.__name__}")
                 events = await collector.collect()
                 all_events.extend(events)
+                self.collection_count += len(events)
+                self.last_run = datetime.utcnow()
+                logger.info(f"Collected {len(events)} events from {collector.__class__.__name__}")
             except Exception as e:
-                logger.error(f"Error collecting from {collector.__class__.__name__}: {e}")
+                logger.error(f"Error collecting from {collector.__class__.__name__}: {e}", exc_info=True)
+        logger.info(f"Collection cycle complete. Found {len(all_events)} events")
         return all_events
     
     async def start_collection_loop(self):
         """Start continuous data collection loop"""
+        # Reset running state when starting new loop
+        self.is_running = False
+        
         if self.is_running:
             logger.warning("Collection loop is already running")
             return
@@ -64,27 +75,27 @@ class CollectorManager:
         
         while self.is_running:
             try:
-                logger.info("Starting data collection cycle")
-                await self.collect_all()
-                logger.info(f"Data collection cycle completed at {datetime.utcnow()}")
+                logger.info(f"Starting scheduled collection cycle at {datetime.utcnow()}")
+                events = await self.collect_all()
+                logger.info(f"Scheduled collection cycle completed. Found {len(events)} events")
                 
                 # Wait for next interval
                 await asyncio.sleep(UPDATE_INTERVAL_SECONDS)
                 
             except Exception as e:
-                logger.error(f"Error in collection loop: {e}")
+                logger.error(f"Error in collection loop: {e}", exc_info=True)
                 await asyncio.sleep(60)  # Wait a minute before retrying
     
     async def cleanup(self):
         """Cleanup all collectors"""
         logger.info("Cleaning up collectors")
+        self.is_running = False  # Stop the collection loop
         for collector in self.collectors:
             if hasattr(collector, 'cleanup'):
                 try:
                     await collector.cleanup()
                 except Exception as e:
                     logger.error(f"Error cleaning up collector {collector.__class__.__name__}: {e}")
-        self.is_running = False
 
     def stop_collection(self):
         """Stop the collection loop"""
