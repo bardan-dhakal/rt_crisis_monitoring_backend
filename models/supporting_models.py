@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
+from models.enums import EventType, UrgencyLevel, CrisisStatus
 
 class Location(BaseModel):
     """Structured location information for crisis events."""
@@ -38,3 +39,16 @@ class Source(BaseModel):
     text: str = Field(..., description="Original text content")
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: dict = Field(default_factory=dict)
+
+class EventQuery(BaseModel):
+    """Query parameters for filtering and sorting crisis events."""
+    event_type: Optional[EventType] = None
+    urgency_level: Optional[UrgencyLevel] = None
+    status: Optional[CrisisStatus] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    country: Optional[str] = None
+    sort_by: Optional[str] = Field(None, description="Field to sort by (timestamp, urgency_level, event_type)")
+    sort_order: Optional[str] = Field("desc", description="Sort order (asc or desc)")
+    limit: Optional[int] = Field(10, description="Number of events to return", ge=1, le=100)
+    skip: Optional[int] = Field(0, description="Number of events to skip", ge=0)

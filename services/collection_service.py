@@ -1,12 +1,14 @@
 import asyncio
 import logging
-from typing import List
+from typing import List, Dict, Any
 from models.crisis_event import CrisisEvent
+from models.supporting_models import EventQuery
 from services.collectors.collector_manager import CollectorManager
 from services.collectors.web_scraper_collector import WebScraperCollector
 from src.core.database import db
 from config.settings import get_settings
 from motor.motor_asyncio import AsyncIOMotorCollection
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -26,6 +28,73 @@ class CollectionService:
                 logger.info(f"Initialized MongoDB collection: {settings.MONGODB_EVENTS_COLLECTION}")
         except Exception as e:
             logger.error(f"Error initializing MongoDB collection: {e}")
+            raise
+
+    def _build_query(self, query_params: EventQuery) -> Dict[str, Any]:
+        """Build MongoDB query from filter parameters"""
+        query = {}
+        
+        # Add event type filter
+        if query_params.event_type:
+            query["event_type"] = query_params.event_type
+            
+        # Add urgency level filter
+        if query_params.urgency_level:
+            query["urgency_level"] = query_params.urgency_level
+            
+        # Add status filter
+        if query_params.status:
+            query["status"] = query_params.status
+            
+        # Add date range filter
+        date_query = {}
+        if query_params.start_date:
+            date_query["$gte"] = query_params.start_date
+        if query_params.end_date:
+            date_query["$lte"] = query_params.end_date
+        if date_query:
+            query["timestamp"] = date_query
+            
+        # Add location filter
+        if query_params.country:
+            query["location.country"] = query_params.country
+            
+        return query
+
+    def _build_sort(self, query_params: EventQuery) -> List[tuple]:
+        """Build MongoDB sort parameters"""
+        sort_field = query_params.sort_by or "timestamp"
+        sort_order = -1 if query_params.sort_order == "desc" else 1
+        return [(sort_field, sort_order)]
+
+    async def query_events(self, query_params: EventQuery) -> List[CrisisEvent]:
+        """Query events with filtering and sorting"""
+        if not self._running:
+            raise RuntimeError("Collection service is not running")
+            
+        try:
+            if self.events_collection is None:
+                await self._init_db()
+                
+            # Build query and sort parameters
+            query = self._build_query(query_params)
+            sort = self._build_sort(query_params)
+            
+            # Execute query with pagination
+            cursor = self.events_collection.find(query)
+            cursor = cursor.sort(sort)
+            cursor = cursor.skip(query_params.skip)
+            cursor = cursor.limit(query_params.limit)
+            
+            # Convert cursor to list of events
+            events = []
+            async for doc in cursor:
+                events.append(CrisisEvent.model_validate(doc))
+                
+            return events
+            
+        except Exception as e:
+            logger.error(f"Error querying events: {e}")
             raise
 
     async def start_collection(self):

@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import asyncio
 import logging
 from services.collection_service import CollectionService
 from models.crisis_event import CrisisEvent
-from typing import List
+from models.supporting_models import EventQuery
+from models.enums import EventType, UrgencyLevel, CrisisStatus
+from typing import List, Optional
+from datetime import datetime
 from src.core.database import db
 
 # Configure logging
@@ -85,6 +88,53 @@ async def get_events():
 @app.get("/status")
 def get_status():
     return collection_service.get_collection_status()
+
+@app.get("/api/v1/events", response_model=List[CrisisEvent])
+async def get_events(
+    event_type: Optional[EventType] = None,
+    urgency_level: Optional[UrgencyLevel] = None,
+    status: Optional[CrisisStatus] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    country: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, description="Field to sort by (timestamp, urgency_level, event_type)"),
+    sort_order: Optional[str] = Query("desc", description="Sort order (asc or desc)"),
+    limit: Optional[int] = Query(10, ge=1, le=100),
+    skip: Optional[int] = Query(0, ge=0)
+):
+    """
+    Get crisis events with filtering and sorting capabilities.
+    
+    Parameters:
+    - event_type: Filter by type of crisis event
+    - urgency_level: Filter by urgency level
+    - status: Filter by event status
+    - start_date: Filter events after this date
+    - end_date: Filter events before this date
+    - country: Filter by country
+    - sort_by: Field to sort by (timestamp, urgency_level, event_type)
+    - sort_order: Sort order (asc or desc)
+    - limit: Number of events to return (1-100)
+    - skip: Number of events to skip (pagination)
+    """
+    try:
+        query = EventQuery(
+            event_type=event_type,
+            urgency_level=urgency_level,
+            status=status,
+            start_date=start_date,
+            end_date=end_date,
+            country=country,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            skip=skip
+        )
+        events = await collection_service.query_events(query)
+        return events
+    except Exception as e:
+        logger.error(f"Error getting filtered events: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
