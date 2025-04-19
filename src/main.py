@@ -36,13 +36,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+start_time = datetime.utcnow()
+
 @app.get("/")
 def read_root():
     """Root endpoint that returns basic API information and health status"""
+    uptime = datetime.utcnow() - start_time
     return {
         "name": "CrisisCopilot API",
         "status": "healthy",
         "version": "1.0.0",
+        "uptime_seconds": uptime.total_seconds(),
         "endpoints": {
             "events": "/events",
             "status": "/status",
