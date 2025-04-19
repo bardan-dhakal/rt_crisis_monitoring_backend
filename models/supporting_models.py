@@ -41,7 +41,22 @@ class Source(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 class EventQuery(BaseModel):
-    """Query parameters for filtering and sorting crisis events."""
+    """Query parameters for filtering and sorting crisis events.
+    
+    This model defines all possible query parameters that can be used to filter and sort crisis events.
+    It supports pagination, date range filtering, location filtering, and various sorting options.
+    
+    Examples:
+        Query recent earthquakes:
+        ```python
+        EventQuery(
+            event_type=EventType.EARTHQUAKE,
+            sort_by="timestamp",
+            sort_order="desc",
+            limit=10
+        )
+        ```
+    """
     event_type: Optional[EventType] = None
     urgency_level: Optional[UrgencyLevel] = None
     status: Optional[CrisisStatus] = None
